@@ -63,7 +63,9 @@ function setupCanvas() {
     canvas.height = Math.round(size * dpr);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     drawWheel(size);
+
     canvas.style.transform = `rotate(${currentRotation}rad)`;
 }
 
@@ -97,6 +99,7 @@ function drawWheel(size) {
         ctx.stroke();
 
         ctx.save();
+
         ctx.translate(center, center);
         ctx.rotate(middleAngle);
 
@@ -186,24 +189,18 @@ function stopSpinMusic() {
     spinMusic.pause();
     spinMusic.currentTime = 0;
 }
+
 function playPrizeSound() {
-    if (!prizeSound) {
-        console.error("Không tìm thấy phần tử prizeSound trong HTML.");
-        return;
-    }
+    if (!prizeSound) return;
 
     prizeSound.pause();
     prizeSound.currentTime = 0;
     prizeSound.volume = 1;
     prizeSound.muted = false;
 
-    const playPromise = prizeSound.play();
-
-    if (playPromise !== undefined) {
-        playPromise.catch(error => {
-            console.error("Không phát được tiếng vỗ tay:", error.name, error.message);
-        });
-    }
+    prizeSound.play().catch(error => {
+        console.warn("Không thể phát tiếng vỗ tay:", error);
+    });
 }
 
 function stopPrizeSound() {
@@ -221,8 +218,14 @@ let celebrationAnimationId = null;
 let celebrationEndTime = 0;
 
 const celebrationColors = [
-    "#FFD45A", "#FF5252", "#70C9F2", "#FFFFFF",
-    "#FF80AB", "#7CE7AC", "#B388FF", "#FF9F43"
+    "#FFD45A",
+    "#FF5252",
+    "#70C9F2",
+    "#FFFFFF",
+    "#FF80AB",
+    "#7CE7AC",
+    "#B388FF",
+    "#FF9F43"
 ];
 
 function setupCelebrationCanvas() {
@@ -266,7 +269,9 @@ function animateCelebration() {
 
     celebrationCtx.clearRect(0, 0, width, height);
 
-    particles = particles.filter(p => p.y < height + 30 && p.life > 0);
+    particles = particles.filter(
+        p => p.y < height + 30 && p.life > 0
+    );
 
     particles.forEach(p => {
         p.x += p.vx;
@@ -279,11 +284,21 @@ function animateCelebration() {
         celebrationCtx.translate(p.x, p.y);
         celebrationCtx.rotate(p.rotation);
         celebrationCtx.fillStyle = p.color;
-        celebrationCtx.fillRect(-p.size / 2, -p.size, p.size, p.size * 2);
+
+        celebrationCtx.fillRect(
+            -p.size / 2,
+            -p.size,
+            p.size,
+            p.size * 2
+        );
+
         celebrationCtx.restore();
     });
 
-    if (performance.now() < celebrationEndTime || particles.length > 0) {
+    if (
+        performance.now() < celebrationEndTime ||
+        particles.length > 0
+    ) {
         celebrationAnimationId = requestAnimationFrame(animateCelebration);
     } else {
         celebrationAnimationId = null;
@@ -300,7 +315,10 @@ function stopCelebration() {
     particles = [];
 
     celebrationCtx.clearRect(
-        0, 0, window.innerWidth, window.innerHeight
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
     );
 }
 
@@ -342,9 +360,9 @@ function choosePrize() {
     // Bình giữ nhiệt YAMAHA: 9%
     return 0;
 }
+
 // ================================================
-// ================================================
-// 7. QUAY VÒNG
+// 7. QUAY VÒNG - ĐỒNG BỘ ĐIỂM DỪNG VÀ GIẢI THƯỞNG
 // ================================================
 function normalizeAngle(angle) {
     return ((angle % TAU) + TAU) % TAU;
@@ -354,36 +372,64 @@ function spinWheel() {
     if (isSpinning) return;
 
     isSpinning = true;
+
     spinButton.disabled = true;
     spinButton.innerHTML = "<span>⏳</span><span>ĐANG QUAY...</span>";
+
     statusText.textContent = "Chúc bạn may mắn!";
 
     hideResult();
     stopCelebration();
     stopPrizeSound();
 
+    // Chọn giải đúng một lần cho lượt quay hiện tại
     const winningIndex = choosePrize();
 
-    const targetAngle = winningIndex * SLICE_ANGLE + SLICE_ANGLE / 2;
-    const desiredRotation = normalizeAngle(TAU - targetAngle);
-    const currentNormalized = normalizeAngle(currentRotation);
-    const extraRotation = normalizeAngle(desiredRotation - currentNormalized);
+    // Góc chính giữa ô trúng thưởng lúc chưa xoay
+    const targetAngle =
+        -Math.PI / 2 + (winningIndex + 0.5) * SLICE_ANGLE;
 
+    // Mũi tên cố định tại vị trí 12 giờ
+    const pointerAngle = -Math.PI / 2;
+
+    // Tính góc cần xoay để tâm ô trúng thưởng nằm dưới mũi tên
+    const desiredRotation = normalizeAngle(
+        pointerAngle - targetAngle
+    );
+
+    // Góc hiện tại của vòng quay
+    const currentNormalized = normalizeAngle(currentRotation);
+
+    // Góc xoay thêm để đến đúng ô được chọn
+    const extraRotation = normalizeAngle(
+        desiredRotation - currentNormalized
+    );
+
+    // Quay thêm từ 6 đến 9 vòng
     const fullSpins = 6 + Math.floor(Math.random() * 4);
+
     const startRotation = currentRotation;
     const totalRotation = fullSpins * TAU + extraRotation;
     const endRotation = startRotation + totalRotation;
 
+    // Thời gian quay: 15 giây
     const duration = 15000;
     const startTime = performance.now();
 
     startSpinMusic();
 
     function animate(now) {
-        const progress = Math.min((now - startTime) / duration, 1);
+        const progress = Math.min(
+            (now - startTime) / duration,
+            1
+        );
+
+        // Hiệu ứng giảm tốc khi gần đến điểm dừng
         const easedProgress = 1 - Math.pow(1 - progress, 4);
 
-        currentRotation = startRotation + totalRotation * easedProgress;
+        currentRotation =
+            startRotation + totalRotation * easedProgress;
+
         canvas.style.transform = `rotate(${currentRotation}rad)`;
 
         if (progress < 1) {
@@ -391,9 +437,12 @@ function spinWheel() {
             return;
         }
 
+        // Chốt góc cuối cùng để tránh sai số animation
         currentRotation = endRotation;
+
         canvas.style.transform = `rotate(${currentRotation}rad)`;
 
+        // Trả đúng kết quả đã chọn cho lượt quay này
         finishSpin(winningIndex);
     }
 
@@ -405,7 +454,7 @@ function spinWheel() {
 // ================================================
 function finishSpin(winningIndex) {
     const prize = prizes[winningIndex];
-    const isNoPrize = prize.name === NO_PRIZE_NAME;
+    const isNoPrize = prize.name.trim() === NO_PRIZE_NAME;
 
     stopSpinMusic();
     stopPrizeSound();
@@ -413,18 +462,22 @@ function finishSpin(winningIndex) {
     isSpinning = false;
 
     spinButton.disabled = false;
+
     spinButton.innerHTML =
         '<span class="button-icon">🎁</span><span>QUAY LẠI</span>';
 
     if (isNoPrize) {
         resultCard.classList.add("no-prize");
+
         resultHeading.textContent = "";
         resultPrize.textContent = NO_PRIZE_NAME;
         statusText.textContent = NO_PRIZE_NAME;
     } else {
         resultCard.classList.remove("no-prize");
+
         resultHeading.textContent = "CHÚC MỪNG BẠN!";
-        resultPrize.textContent = prize.name;
+        resultPrize.textContent = prize.name.trim();
+
         statusText.textContent = "Vòng quay đã hoàn tất!";
 
         playPrizeSound();
@@ -445,6 +498,7 @@ function closeResult() {
 
     stopPrizeSound();
     hideResult();
+
     spinButton.focus();
 }
 
@@ -452,14 +506,20 @@ function closeResult() {
 // 9. SỰ KIỆN VÀ KHỞI TẠO
 // ================================================
 spinButton.addEventListener("click", spinWheel);
+
 closeResultButton.addEventListener("click", closeResult);
 
 resultScreen.addEventListener("click", event => {
-    if (event.target === resultScreen) closeResult();
+    if (event.target === resultScreen) {
+        closeResult();
+    }
 });
 
 document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && resultScreen.classList.contains("show")) {
+    if (
+        event.key === "Escape" &&
+        resultScreen.classList.contains("show")
+    ) {
         closeResult();
     }
 });
@@ -473,5 +533,6 @@ window.addEventListener("resize", () => {
     }, 100);
 });
 
+// Khởi tạo vòng quay
 setupCanvas();
 setupCelebrationCanvas();
