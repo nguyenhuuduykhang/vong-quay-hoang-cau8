@@ -322,20 +322,21 @@ function choosePrize() {
         return 6;
     }
 
-    // Khăn Giấy: 15%
-    if (random < 76) {
+    // Khăn Giấy: 21%
+    if (random < 82) {
         return randomItem([1, 3, 7, 9, 11]);
     }
 
-    // Áo thun trắng YAMAHA: 12%
-    if (random < 88) {
+    // Áo thun trắng YAMAHA: 9%
+    if (random < 91) {
         return 4;
     }
 
-    // Bình giữ nhiệt YAMAHA: 12%
+    // Bình giữ nhiệt YAMAHA: 9%
     return 0;
 }
 
+// ================================================
 // ================================================
 // 7. QUAY VÒNG
 // ================================================
