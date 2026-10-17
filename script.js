@@ -27,22 +27,23 @@ const prizeSound = document.getElementById("prizeSound");
 const TOTAL_SLICES = 12;
 const TAU = Math.PI * 2;
 const SLICE_ANGLE = TAU / TOTAL_SLICES;
+
 const NO_PRIZE_NAME = "Khăn Giấy";
 const WHITE_SLICE_COLOR = "#F4F4F4";
 
 const prizes = [
-    { name: "Bình giữ nhiệt YAMAHA", color: "#FFD45A", textColor: "#12385B" },
-    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" },
-    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" },
-    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" },
-    { name: "Áo thun trắng YAMAHA", color: "#FFD45A", textColor: "#12385B" },
-    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" },
-    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" },
-    { name: "Bình giữ nhiệt YAMAHA và áo thun YAMAHA", color: "#da1212", textColor: "#fcfcfc" },
-    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" },
-    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" },
-    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" },
-    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" }
+    { name: "Bình giữ nhiệt YAMAHA", color: "#FFD45A", textColor: "#12385B" }, // 0 - Vàng
+    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" }, // 1
+    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" }, // 2 - Trắng
+    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" }, // 3
+    { name: "Áo thun trắng YAMAHA", color: "#FFD45A", textColor: "#12385B" }, // 4 - Vàng
+    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" }, // 5
+    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" }, // 6 - Trắng
+    { name: "Bình giữ nhiệt YAMAHA và áo thun YAMAHA", color: "#da1212", textColor: "#fcfcfc" }, // 7 - Đỏ
+    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" }, // 8
+    { name: "Chúc bạn may mắn lần sau", color: "#F4F4F4", textColor: "#12385B" }, // 9 - Trắng
+    { name: "Túi Cói + Khăn giấy", color: "#174A7E", textColor: "#FFFFFF" }, // 10
+    { name: NO_PRIZE_NAME, color: "#70C9F2", textColor: "#12385B" } // 11
 ];
 
 let currentRotation = 0;
@@ -324,38 +325,39 @@ function stopCelebration() {
 }
 
 // ================================================
-// 6. CHỌN GIẢI THEO TỈ LỆ PHẦN TRĂM
+// 6. CHỌN GIẢI THEO CHU KỲ
 // ================================================
+
+// Lưu trạng thái chu kỳ trong trình duyệt.
+// Lượt 12: trúng một trong hai ô vàng.
+// Lượt 24: trúng ô màu đỏ.
+// Các lượt khác: chia đều cho các ô còn lại.
+
+const CYCLE_STORAGE_KEY = "hoangCauWheelCycle";
+
+const RED_INDEX = 7;
+const GOLD_INDICES = [0, 4];
+
+const RED_CYCLE_LENGTH = 24;
+const GOLD_CYCLE_LENGTH = 12;
+
 function randomItem(indices) {
     return indices[Math.floor(Math.random() * indices.length)];
 }
 
 function createCycle() {
     return {
-        count: 0,
-        goldTurn: 1 + Math.floor(Math.random() * 24)
+        count: 0
     };
 }
 
-function choosePrize() {
-    const cycleKey = "hoangCauWheelCycle";
-
-    // Ô vàng
-    const goldIndices = [0, 4];
-
-    // Hai ô trắng
-    const whiteIndices = [2, 6];
-
-    // Bốn ô giải khuyến khích
-    const consolationIndices = [1, 5, 8, 10];
-
-    // Bốn ô không trúng thưởng
-    const noPrizeIndices = [3, 7, 9, 11];
-
+function getCycleState() {
     let cycleState;
 
     try {
-        cycleState = JSON.parse(localStorage.getItem(cycleKey));
+        cycleState = JSON.parse(
+            localStorage.getItem(CYCLE_STORAGE_KEY)
+        );
     } catch (error) {
         cycleState = null;
     }
@@ -363,50 +365,67 @@ function choosePrize() {
     if (
         !cycleState ||
         !Number.isInteger(cycleState.count) ||
-        !Number.isInteger(cycleState.goldTurn) ||
         cycleState.count < 0 ||
-        cycleState.count >= 24 ||
-        cycleState.goldTurn < 1 ||
-        cycleState.goldTurn > 24
+        cycleState.count >= RED_CYCLE_LENGTH
     ) {
         cycleState = createCycle();
     }
 
+    return cycleState;
+}
+
+function choosePrize() {
+    const cycleState = getCycleState();
+
+    // Số thứ tự lượt quay tiếp theo trong chu kỳ
+    const nextTurn = cycleState.count + 1;
+
     let winningIndex;
 
-    // Đến lượt vàng đã chọn: đảm bảo trúng một trong hai ô vàng
-    if (cycleState.count + 1 === cycleState.goldTurn) {
-        winningIndex = randomItem(goldIndices);
-    } else {
-        const random = Math.random() * 100;
-
-        if (random < 20) {
-            // Tổng 20%: mỗi ô trắng 10%
-            winningIndex = randomItem(whiteIndices);
-        } else if (random < 60) {
-            // Tổng 40%: mỗi ô giải khuyến khích 10%
-            winningIndex = randomItem(consolationIndices);
-        } else {
-            // Tổng 40%: mỗi ô không trúng 10%
-            winningIndex = randomItem(noPrizeIndices);
-        }
+    // Ưu tiên ô đỏ ở lượt thứ 24
+    if (nextTurn === RED_CYCLE_LENGTH) {
+        winningIndex = RED_INDEX;
     }
 
+    // Lượt thứ 12: chọn ngẫu nhiên một trong hai ô vàng
+    else if (nextTurn === GOLD_CYCLE_LENGTH) {
+        winningIndex = randomItem(GOLD_INDICES);
+    }
+
+    // Những lượt còn lại: chia đều cho tất cả ô không phải đỏ/vàng
+    else {
+        const remainingIndices = prizes
+            .map((prize, index) => index)
+            .filter(index => {
+                return (
+                    index !== RED_INDEX &&
+                    !GOLD_INDICES.includes(index)
+                );
+            });
+
+        winningIndex = randomItem(remainingIndices);
+    }
+
+    // Cập nhật số lượt đã quay
     cycleState.count++;
 
-    // Hoàn thành 24 lượt thì bắt đầu chu kỳ mới
-    if (cycleState.count >= 24) {
+    // Sau lượt thứ 24, bắt đầu chu kỳ mới
+    if (cycleState.count >= RED_CYCLE_LENGTH) {
         cycleState = createCycle();
     }
 
     try {
-        localStorage.setItem(cycleKey, JSON.stringify(cycleState));
+        localStorage.setItem(
+            CYCLE_STORAGE_KEY,
+            JSON.stringify(cycleState)
+        );
     } catch (error) {
         console.warn("Không thể lưu chu kỳ quay:", error);
     }
 
     return winningIndex;
 }
+
 // ================================================
 // 7. QUAY VÒNG - ĐỒNG BỘ ĐIỂM DỪNG VÀ GIẢI THƯỞNG
 // ================================================
@@ -515,7 +534,7 @@ function finishSpin(winningIndex) {
         '<span class="button-icon">🎁</span><span>QUAY LẠI</span>';
 
     if (isWhiteSlice) {
-        // Ô màu trắng: không có âm thanh trao thưởng và ruy băng
+        // Ô màu trắng: không phát âm thanh trao thưởng, không có ruy băng
         resultCard.classList.add("no-prize");
         resultHeading.textContent = "";
         resultPrize.textContent = "Chúc bạn may mắn lần sau";
