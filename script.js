@@ -186,17 +186,24 @@ function stopSpinMusic() {
     spinMusic.pause();
     spinMusic.currentTime = 0;
 }
-
 function playPrizeSound() {
-    if (!prizeSound) return;
+    if (!prizeSound) {
+        console.error("Không tìm thấy phần tử prizeSound trong HTML.");
+        return;
+    }
 
     prizeSound.pause();
     prizeSound.currentTime = 0;
     prizeSound.volume = 1;
+    prizeSound.muted = false;
 
-    prizeSound.play().catch(error => {
-        console.warn("Không thể phát tiếng vỗ tay:", error);
-    });
+    const playPromise = prizeSound.play();
+
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.error("Không phát được tiếng vỗ tay:", error.name, error.message);
+        });
+    }
 }
 
 function stopPrizeSound() {
